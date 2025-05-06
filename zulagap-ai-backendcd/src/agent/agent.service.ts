@@ -1,32 +1,131 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma, AgentRole } from '@prisma/client';
-import { OpenAI } from 'openai';
+// Prisma 타입 import
+import { Prisma, Agent as AgentModel } from '@prisma/client';
+// OpenAI import 수정
+import OpenAI from 'openai';
+
+function parseJson(value: any) {
+  if (!value) return undefined;
+  try {
+    return typeof value === 'string' ? JSON.parse(value) : value;
+  } catch {
+    return value;
+  }
+}
 
 @Injectable()
 export class AgentService {
+  private readonly logger = new Logger(AgentService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
-  // userId는 data에 직접 넣지 않고, 반드시 user relation으로 연결!
-  async createAgentWithUser(userId: string, data: Omit<Prisma.AgentCreateInput, 'user'>) {
-    return this.prisma.agent.create({
-      data: {
-        ...data,
-        user: { connect: { id: userId } }, // 여기서 변환
-      },
-    });
-  }
+  // 팀 서비스와 유사하게 에이전트 생성
+  async create(data: any) {
+    this.logger.log(`[에이전트 생성] 입력 데이터: ${JSON.stringify(data)}`);
+    const {
+      documents,
+      ragDocs,
+      identity,
+      docGuides,
+      relations,
+      userId,
+      teamId,
+      brandId,
+      config,
+      ...rest
+    } = data;
 
-  // Prisma.AgentCreateInput에는 반드시 user: { connect: { id } } 등 relation 사용!
-  async create(data: Prisma.AgentCreateInput) {
-    const { userId, teamId, brandId, ...rest } = data as any;
-    return this.prisma.agent.create({
-      data: {
-        ...rest,
-        ...(userId !== undefined && userId !== null ? { user: { connect: { id: userId } } } : undefined),
-        ...(teamId ? { team: { connect: { id: teamId } } } : undefined),
-        ...(brandId ? { brand: { connect: { id: brandId } } } : undefined),
-      },
+    return this.prisma.$transaction(async (tx) => {
+      // 1. 에이전트 DB 생성
+      this.logger.log('[에이전트 생성] 1. 에이전트 DB 생성 시작');
+      const agent = await tx.agent.create({
+        data: {
+          ...rest,
+          identity: parseJson(identity) ?? {},
+          ragDocs: ragDocs ?? [],
+          config: config ?? {},
+          ...(userId ? { user: { connect: { id: userId } } } : {}),
+          ...(teamId ? { team: { connect: { id: teamId } } } : {}),
+          ...(brandId ? { brand: { connect: { id: brandId } } } : {}),
+          documents: documents && documents.length > 0
+            ? { connect: documents.map((id: string) => ({ id })) }
+            : undefined,
+        },
+      });
+      this.logger.log(`[에이전트 생성] 1. 에이전트 DB 생성 완료: id=${agent.id}`);
+
+      // 2. 문서 연결 (agentId 업데이트)
+      if (documents && documents.length > 0) {
+        this.logger.log(`[에이전트 생성] 2. 문서 연결 시작: ${documents.join(',')}`);
+        await tx.document.updateMany({
+          where: { id: { in: documents } },
+          data: { agentId: agent.id },
+        });
+        this.logger.log('[에이전트 생성] 2. 문서 연결 완료');
+      }
+
+      // 3. 문서별 가이드라인(metadata) 반영
+      this.logger.log(`[에이전트 생성] 3. 문서별 가이드라인 반영 시작: ${JSON.stringify(docGuides)}`);
+      if (docGuides && documents && documents.length > 0) {
+        for (const [docId, guide] of Object.entries(docGuides)) {
+          this.logger.log(`[에이전트 생성] 3-1. 문서 가이드라인 적용: docId=${docId}, guide=${guide}`);
+          if (documents.includes(docId)) {
+            const doc = await tx.document.findUnique({ where: { id: docId } });
+            if (!doc) {
+              this.logger.warn(`[에이전트 생성] 3-2. 문서 없음: ${docId}`);
+              continue;
+            }
+            const prevMeta: Prisma.InputJsonValue = typeof doc?.metadata === 'object' && doc.metadata !== null ? doc.metadata : {};
+            const newMeta = JSON.parse(JSON.stringify({ ...(prevMeta as object), guide }));
+            await tx.document.update({
+              where: { id: docId },
+              data: { metadata: newMeta },
+            });
+            this.logger.log(`[에이전트 생성] 3-3. 문서 가이드라인 저장 완료: docId=${docId}`);
+          }
+        }
+      }
+
+      // 4. 문서 관계 반영 (중복/유효성 체크)
+      if (relations && Array.isArray(relations)) {
+        this.logger.log(`4. 문서 관계 반영: ${JSON.stringify(relations)}`);
+        for (const rel of relations) {
+          const fromExists = await tx.document.findUnique({ where: { id: rel.fromId } });
+          const toExists = await tx.document.findUnique({ where: { id: rel.toId } });
+          if (!fromExists || !toExists) {
+            this.logger.warn(`관계 문서 없음: fromId=${rel.fromId}, toId=${rel.toId}`);
+            continue;
+          }
+          if (!agent.id) {
+            this.logger.error('agentId is required for DocumentRelation');
+            throw new Error('agentId is required for DocumentRelation');
+          }
+          const exists = await tx.documentRelation.findFirst({
+            where: {
+              fromId: rel.fromId,
+              toId: rel.toId,
+              type: rel.type,
+              agentId: agent.id,
+            },
+          });
+          if (!exists) {
+            await tx.documentRelation.create({
+              data: {
+                fromId: rel.fromId,
+                toId: rel.toId,
+                type: rel.type,
+                prompt: rel.prompt,
+                seq: rel.seq,
+                agentId: agent.id,
+              },
+            });
+          }
+        }
+      }
+
+      this.logger.log(`에이전트 생성 완료: id=${agent.id}`);
+      return agent;
     });
   }
 
@@ -134,7 +233,7 @@ export class AgentService {
     return this.prisma.agent.findMany({
       where: {
         ...(query.teamId && { teamId: query.teamId }),
-        ...(query.role && { role: { equals: query.role as AgentRole } }),
+        ...(query.role && { role: query.role as any }), // as any 또는 enum import
         ...(query.type && { type: query.type }),
       },
     });
