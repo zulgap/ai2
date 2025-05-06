@@ -1,0 +1,319 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUM 정의
+enum TeamRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum AgentRole {
+  SYSTEM
+  USER
+  ASSISTANT
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}
+
+enum WorkflowStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum TeamLeaderType {
+  SINGLE
+  MULTI
+}
+
+// 사용자 모델
+model User {
+  id            String              @id @default(uuid())
+  email         String              @unique
+  name          String?
+  password      String
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  workflows     Workflow[]
+  agents        Agent[]
+  conversations Conversation[]
+  documents     Document[]
+  agentSessions AgentSession[]
+  executions    WorkflowExecution[]
+}
+
+// 팀 모델
+model Team {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  brandId     String?
+  brand       Brand?     @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+  documents   Document[]
+  agents      Agent[]
+  workflows   Workflow[]
+  category    String?
+  ragDocs     String[] // ← 추가
+  documentRelations DocumentRelation[] @relation("TeamOnRelation")
+}
+
+// 워크플로우 모델
+model Workflow {
+  id             String              @id @default(uuid())
+  name           String
+  description    String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @default(now())
+  userId         String
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId         String?
+  team           Team?               @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  brandId        String?
+  brand          Brand?              @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  agentId        String?
+  agent          Agent?              @relation("AgentWorkflows", fields: [agentId], references: [id])
+  isPublic       Boolean             @default(false)
+  config         Json?
+  nodes          Node[]
+  executions     WorkflowExecution[]
+  teamLeaderType TeamLeaderType      @default(SINGLE)
+  leaderAgentId  String?
+  leaderAgent    Agent?              @relation("WorkflowLeader", fields: [leaderAgentId], references: [id])
+  documents      Document[]
+  documentRelations DocumentRelation[] @relation("WorkflowOnRelation")
+}
+
+// 워크플로우 실행 이력 모델
+model WorkflowExecution {
+  id             String         @id @default(uuid())
+  workflowId     String
+  userId         String
+  agentSessionId String?
+  startedAt      DateTime       @default(now())
+  endedAt        DateTime?
+  status         WorkflowStatus
+  input          Json?
+  output         Json?
+  error          String?
+  logs           Json?
+  workflow       Workflow       @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentSession   AgentSession?  @relation("AgentSessionToWorkflowExecution", fields: [agentSessionId], references: [id], onDelete: SetNull)
+  conversations  Conversation[]
+  messages       Message[]
+}
+
+// 노드 모델
+model Node {
+  id            String    @id @default(uuid())
+  type          String
+  name          String
+  position      Json
+  data          Json
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  workflowId    String
+  workflow      Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  inputs        Json?
+  outputs       Json?
+  leaderAgentId String?
+  leaderAgent   Agent?    @relation("NodeLeader", fields: [leaderAgentId], references: [id])
+  order         Int
+  messages      Message[]
+  documentRelations DocumentRelation[] @relation("NodeOnRelation")
+}
+
+// 에이전트 모델
+model Agent {
+  id                String         @id @default(uuid())
+  name              String
+  description       String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @default(now())
+  userId            String?
+  teamId            String?
+  user              User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team              Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  brandId           String?
+  brand             Brand?         @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  config            Json
+  conversations     Conversation[]
+  sessions          AgentSession[]
+  isPublic          Boolean        @default(true) // 필수 & 기본값 공개(true)
+  identity          Json?
+  role              AgentRole?
+  workflowLeaderFor Workflow[]     @relation("WorkflowLeader")
+  nodeLeaderFor     Node[]         @relation("NodeLeader")
+  documents         Document[]     @relation("AgentDocuments")
+  parentAgentId     String?
+  parentAgent       Agent?         @relation("AgentParent", fields: [parentAgentId], references: [id])
+  childrenAgents    Agent[]        @relation("AgentParent")
+  ragDocs           String[] // ← 이미 있음
+  prompt            String?
+  model             String?
+  temperature       Float?
+  type              String?
+  workflows         Workflow[]     @relation("AgentWorkflows")
+  messages          Message[]
+  documentRelations DocumentRelation[] @relation("AgentOnRelation")
+}
+
+// 문서 모델
+model Document {
+  id         String          @id @default(uuid())
+  title      String
+  content    String
+  source     String?         @db.VarChar(255)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @default(now())
+  userId     String?
+  teamId     String?
+  brandId    String?
+  brand      Brand?          @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  workflowId String?
+  agentId    String?
+  user       User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team       Team?           @relation(fields: [teamId], references: [id])
+  workflow   Workflow?       @relation(fields: [workflowId], references: [id])
+  agent      Agent?          @relation("AgentDocuments", fields: [agentId], references: [id])
+  metadata   Json?
+  relations  Json?
+  embedding  Json?
+  chunks     DocumentChunk[]
+  size       Int
+  mimetype   String
+
+  // 벡터스토리 완료 여부 추가
+  vectorized Boolean        @default(false)
+
+  // 추가: 문서 관계 양방향 relation
+  relationsFrom DocumentRelation[] @relation("FromDocument")
+  relationsTo   DocumentRelation[] @relation("ToDocument")
+  nodeId        String?
+
+  // 추가: 전용 구분 불린값
+  isBrandOnly   Boolean     @default(false) // 브랜드 전용 문서 여부
+  isTeamOnly    Boolean     @default(false) // 팀 전용 문서 여부
+  isAgentOnly   Boolean     @default(false) // 에이전트 전용 문서 여부
+}
+
+// 문서 청크 모델
+model DocumentChunk {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+  content    String
+  embedding  Json
+  chunkIndex Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// 기타 모델 (예시)
+model Brand {
+  id                String             @id @default(uuid())
+  name              String
+  identity          Json?
+  metadata          Json?              // ← 이 줄을 추가하세요!
+  createdAt         DateTime           @default(now())
+  documents         Document[]
+  Team              Team[]
+  workflows         Workflow[]
+  agents            Agent[]
+  ragDocs           String[] // ← 추가
+  documentRelations DocumentRelation[] @relation("BrandOnRelation")
+}
+
+model AgentSession {
+  id                 String              @id @default(uuid())
+  agentId            String
+  userId             String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @default(now())
+  messages           Json
+  variables          Json?
+  status             String?
+  agent              Agent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workflowExecutions WorkflowExecution[] @relation("AgentSessionToWorkflowExecution")
+}
+
+model Conversation {
+  id                  String             @id @default(uuid())
+  title               String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  userId              String
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentId             String
+  agent               Agent              @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  messages            Message[]
+  workflowExecutionId String?
+  workflowExecution   WorkflowExecution? @relation(fields: [workflowExecutionId], references: [id], onDelete: SetNull)
+  nodeId              String
+}
+
+model Message {
+  id                  String             @id @default(uuid())
+  content             String
+  role                MessageRole
+  createdAt           DateTime           @default(now())
+  conversationId      String
+  conversation        Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  nodeId              String?
+  node                Node?              @relation(fields: [nodeId], references: [id])
+  agentId             String?
+  agent               Agent?             @relation(fields: [agentId], references: [id])
+  workflowExecutionId String?
+  workflowExecution   WorkflowExecution? @relation(fields: [workflowExecutionId], references: [id])
+  metadata            Json?
+  toolName            String?            @db.VarChar(255)
+  toolResults         Json?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  agentId   String
+  question  String
+  answer    String
+  createdAt DateTime @default(now())
+}
+
+model DocumentRelation {
+  id         String   @id @default(uuid())
+  fromId     String
+  toId       String
+  brandId    String?  // ← ? 추가 (nullable)
+  agentId    String?
+  teamId     String?
+  workflowId String?
+  nodeId     String?
+
+  from       Document @relation("FromDocument", fields: [fromId], references: [id])
+  to         Document @relation("ToDocument", fields: [toId], references: [id])
+  brand      Brand?   @relation("BrandOnRelation", fields: [brandId], references: [id])
+  agent      Agent?   @relation("AgentOnRelation", fields: [agentId], references: [id])
+  team       Team?    @relation("TeamOnRelation", fields: [teamId], references: [id])
+  workflow   Workflow?@relation("WorkflowOnRelation", fields: [workflowId], references: [id])
+  node       Node?    @relation("NodeOnRelation", fields: [nodeId], references: [id])
+
+  type      String
+  prompt    String?
+  seq       Int?
+  createdAt DateTime @default(now())
+
+  @@unique([fromId, toId, type, brandId, agentId, teamId, workflowId, nodeId])
+}

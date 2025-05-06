@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Agent" ALTER COLUMN "userId" DROP NOT NULL,
+ALTER COLUMN "isPublic" DROP NOT NULL;
