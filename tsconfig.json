@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "target": "ES2020", // 최신 JavaScript 기능 지원
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true, // 타입 검사를 활성화하여 문제를 디버깅
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "CommonJS", // 최신 모듈 시스템 사용
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve", // 또는 "preserve"
+    "incremental": true,
+    "baseUrl": ".", // 프로젝트 루트를 기준으로 절대 경로 설정
+    "paths": {
+      "@/*": [
+        "src/*"
+      ] // "@/..."로 src 디렉토리 내 파일 참조 가능
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "next-env.d.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
+}

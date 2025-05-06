@@ -1,0 +1,634 @@
+openapi: 3.0.0
+info:
+  title: ZulaGap-AI API
+  version: 1.1.0
+paths:
+  /api/teams:
+    get:
+      summary: 팀 목록 조회
+      responses:
+        '200':
+          description: 팀 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Team'
+        '400':
+          description: 잘못된 요청
+        '500':
+          description: 서버 오류
+    post:
+      summary: 팀 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamCreate'
+      responses:
+        '200':
+          description: 생성된 팀
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '400':
+          description: 잘못된 요청
+        '500':
+          description: 서버 오류
+  /api/teams/{id}:
+    get:
+      summary: 팀 상세 조회
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 팀 상세
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '404':
+          description: 팀을 찾을 수 없음
+        '400':
+          description: 잘못된 요청
+        '500':
+          description: 서버 오류
+    put:
+      summary: 팀 정보 수정
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamCreate'
+      responses:
+        '200':
+          description: 수정된 팀
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '404':
+          description: 팀을 찾을 수 없음
+        '400':
+          description: 잘못된 요청
+        '500':
+          description: 서버 오류
+    delete:
+      summary: 팀 삭제
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: 삭제됨
+        '404':
+          description: 팀을 찾을 수 없음
+        '400':
+          description: 잘못된 요청
+        '500':
+          description: 서버 오류
+
+  /api/brands:
+    get:
+      summary: 브랜드 목록 조회
+      responses:
+        '200':
+          description: 브랜드 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Brand'
+    post:
+      summary: 브랜드 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandCreate'
+      responses:
+        '200':
+          description: 생성된 브랜드
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+
+  /api/users:
+    get:
+      summary: 유저 목록 조회
+      responses:
+        '200':
+          description: 유저 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+    post:
+      summary: 유저 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '200':
+          description: 생성된 유저
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /api/teams/{teamId}/members:
+    get:
+      summary: 팀 멤버 목록 조회
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 팀 멤버 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamMember'
+    post:
+      summary: 팀 멤버 추가
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamMemberCreate'
+      responses:
+        '200':
+          description: 추가된 팀 멤버
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMember'
+
+  /api/agents:
+    get:
+      summary: 에이전트 목록 조회
+      responses:
+        '200':
+          description: 에이전트 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Agent'
+    post:
+      summary: 에이전트 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentCreate'
+      responses:
+        '200':
+          description: 생성된 에이전트
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+  /api/agents/{id}:
+    get:
+      summary: 에이전트 상세 조회
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 에이전트 상세
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+
+  /api/workflows:
+    get:
+      summary: 워크플로우 목록 조회
+      responses:
+        '200':
+          description: 워크플로우 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Workflow'
+    post:
+      summary: 워크플로우 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowCreate'
+      responses:
+        '200':
+          description: 생성된 워크플로우
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+  /api/workflows/{id}:
+    get:
+      summary: 워크플로우 상세 조회
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 워크플로우 상세
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+
+  /api/workflows/{workflowId}/nodes:
+    get:
+      summary: 워크플로우 내 노드 목록 조회
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 노드 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Node'
+    post:
+      summary: 노드 생성
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeCreate'
+      responses:
+        '200':
+          description: 생성된 노드
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Node'
+
+  /api/documents:
+    get:
+      summary: 문서 목록 조회
+      responses:
+        '200':
+          description: 문서 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
+    post:
+      summary: 문서 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentCreate'
+      responses:
+        '200':
+          description: 생성된 문서
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+  /api/documents/{id}:
+    get:
+      summary: 문서 상세 조회
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 문서 상세
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+
+  /api/conversations:
+    get:
+      summary: 대화 목록 조회
+      responses:
+        '200':
+          description: 대화 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Conversation'
+    post:
+      summary: 대화 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationCreate'
+      responses:
+        '200':
+          description: 생성된 대화
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /api/conversations/{id}/messages:
+    get:
+      summary: 대화 내 메시지 목록 조회
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 메시지 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+    post:
+      summary: 메시지 추가
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageCreate'
+      responses:
+        '200':
+          description: 생성된 메시지
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+components:
+  schemas:
+    Team:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        brandId: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    TeamCreate:
+      type: object
+      required: [name, brandId]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        brandId: { type: string }
+    Brand:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        identity: { type: object }
+    BrandCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        identity: { type: object }
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: string }
+    UserCreate:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        name: { type: string }
+        password: { type: string }
+    TeamMember:
+      type: object
+      properties:
+        id: { type: string }
+        teamId: { type: string }
+        userId: { type: string }
+        role: { type: string }
+    TeamMemberCreate:
+      type: object
+      required: [teamId, userId, role]
+      properties:
+        teamId: { type: string }
+        userId: { type: string }
+        role: { type: string }
+    Agent:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        userId: { type: string }
+        teamId: { type: string }
+        config: { type: object }
+        ragDocs:
+          type: array
+          items: { type: string }
+        prompt: { type: string }
+        type: { type: string }
+        role: { type: string }
+        parentAgentId: { type: string }
+        identity: { type: object }
+        isPublic: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AgentCreate:
+      type: object
+      required: [name, userId, teamId, type, role]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        userId: { type: string }
+        teamId: { type: string }
+        config: { type: object }
+        ragDocs:
+          type: array
+          items: { type: string }
+        prompt: { type: string }
+        type: { type: string }
+        role: { type: string }
+        parentAgentId: { type: string }
+        identity: { type: object }
+    Workflow:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        userId: { type: string }
+        teamId: { type: string }
+        teamLeaderType: { type: string }
+        leaderAgentId: { type: string }
+        config: { type: object }
+    WorkflowCreate:
+      type: object
+      required: [name, userId, teamId, teamLeaderType]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        userId: { type: string }
+        teamId: { type: string }
+        teamLeaderType: { type: string }
+        leaderAgentId: { type: string }
+        config: { type: object }
+    Node:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string }
+        name: { type: string }
+        position: { type: object }
+        data: { type: object }
+        workflowId: { type: string }
+        leaderAgentId: { type: string }
+    NodeCreate:
+      type: object
+      required: [type, name, workflowId]
+      properties:
+        type: { type: string }
+        name: { type: string }
+        position: { type: object }
+        data: { type: object }
+        workflowId: { type: string }
+        leaderAgentId: { type: string }
+    Document:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        content: { type: string }
+        source: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        userId: { type: string }
+        teamId: { type: string }
+        brandId: { type: string }
+        metadata: { type: object }
+        relations: { type: object }
+        embedding: { type: object }
+        agentId: { type: string }
+    DocumentCreate:
+      type: object
+      required: [title, content]
+      properties:
+        title: { type: string }
+        content: { type: string }
+        source: { type: string }
+        userId: { type: string }
+        teamId: { type: string }
+        brandId: { type: string }
+        metadata: { type: object }
+        relations: { type: object }
+        embedding: { type: object }
+        agentId: { type: string }
+    Conversation:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        userId: { type: string }
+        agentId: { type: string }
+    ConversationCreate:
+      type: object
+      required: [userId, agentId]
+      properties:
+        title: { type: string }
+        userId: { type: string }
+        agentId: { type: string }
+    Message:
+      type: object
+      properties:
+        id: { type: string }
+        content: { type: string }
+        role: { type: string }
+        createdAt: { type: string, format: date-time }
+        conversationId: { type: string }
+        metadata: { type: object }
+        toolName: { type: string }
+        toolResults: { type: object }
+    MessageCreate:
+      type: object
+      required: [content, role, conversationId]
+      properties:
+        content: { type: string }
+        role: { type: string }
+        conversationId: { type: string }
+        metadata: { type: object }
+        toolName: { type: string }
+        toolResults: { type: object }
