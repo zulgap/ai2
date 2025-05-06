@@ -1,0 +1,63 @@
+# Zulagap AI - Backend
+
+이 프로젝트는 Zulagap AI의 백엔드 서버로, NestJS 기반의 API 서버입니다.  
+에이전트 및 팀 문서 관리, 파일 업로드, 문서 관계 설정 등 다양한 기능을 제공합니다.
+
+## 주요 기능
+
+- 에이전트/팀/문서 CRUD API
+- 파일 업로드 (multipart/form-data)
+- 문서 간 관계 설정 및 저장
+- Prisma ORM을 통한 DB 연동
+- 에러 및 예외 처리
+
+## 폴더 구조
+
+```
+zulagap-ai-backendcd/
+├── src/
+│   ├── agent/           # 에이전트 관련 컨트롤러/서비스
+│   ├── document/        # 문서 관련 컨트롤러/서비스
+│   ├── team/            # 팀 관련 컨트롤러/서비스
+│   └── ...
+├── prisma/              # Prisma 스키마 및 마이그레이션
+├── main.ts              # 앱 진입점
+└── ...
+```
+
+## 개발 환경
+
+- Node.js
+- NestJS
+- Prisma
+- TypeScript
+
+## 실행 방법
+
+1. 의존성 설치  
+   ```
+   npm install
+   ```
+
+2. 환경 변수 설정  
+   `.env` 파일에 데이터베이스 등 환경변수를 설정하세요.
+
+3. 데이터베이스 마이그레이션  
+   ```
+   npx prisma migrate deploy
+   ```
+
+4. 서버 실행  
+   ```
+   npm run start:dev
+   ```
+
+## 기타
+
+- API 기본 경로: `/api`
+- 파일 업로드는 `@UseInterceptors(FileInterceptor('file'))`를 사용합니다.
+- 예외 및 에러는 NestJS의 HttpException을 통해 처리합니다.
+
+---
+
+문의: [your-email@example.com]

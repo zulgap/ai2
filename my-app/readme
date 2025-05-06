@@ -1,0 +1,63 @@
+# Zulagap AI - My App
+
+이 프로젝트는 에이전트 및 팀 기반 문서 관리, 업로드, 관계 설정 기능을 제공하는 AI 기반 웹 애플리케이션입니다.
+
+## 주요 기능
+
+- 에이전트/팀 생성 및 관리
+- 문서 업로드 (파일, 설명, 메타데이터 등)
+- 문서 간 관계 설정 및 저장
+- 문서 목록 및 상세 조회
+- 백엔드(NestJS)와 프론트엔드(Next.js/React) 분리 구조
+
+## 폴더 구조
+
+```
+my-app/
+├── app/                # 프론트엔드(Next.js)
+│   ├── agents/         # 에이전트 관련 페이지/컴포넌트
+│   ├── teams/          # 팀 관련 페이지/컴포넌트
+│   └── api/            # API 라우트
+├── zulagap-ai-backendcd/ # 백엔드(NestJS)
+│   └── src/
+│       ├── agent/      # 에이전트 컨트롤러/서비스
+│       ├── document/   # 문서 관련 컨트롤러/서비스
+│       └── ...
+└── readme              # 프로젝트 설명 파일
+```
+
+## 개발 환경
+
+- Node.js
+- Next.js (React)
+- NestJS (백엔드)
+- Prisma (ORM)
+- TypeScript
+
+## 실행 방법
+
+1. 의존성 설치  
+   ```
+   npm install
+   ```
+
+2. 프론트엔드 실행  
+   ```
+   cd my-app
+   npm run dev
+   ```
+
+3. 백엔드 실행  
+   ```
+   cd zulagap-ai-backendcd
+   npm run start:dev
+   ```
+
+## 기타
+
+- `.env` 파일에 백엔드/프론트엔드 환경변수를 설정하세요.
+- `node_modules` 등 불필요한 파일은 `.gitignore`에 추가하세요.
+
+---
+
+문의: [your-email@example.com]
