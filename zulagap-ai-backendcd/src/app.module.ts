@@ -19,6 +19,7 @@ import { RolesGuard } from './guards/roles.guard';
 // import { GatewayModule } from './gateway/gateway.module'; // 실시간 기능 필요시
 import { BrandController } from './brand/brand.controller';
 import { TeamModule } from './teams/teams.module';
+import { VectorStoreService } from './document/vectorstore/vectorstore.service';
 
 @Module({
   imports: [
@@ -40,10 +41,14 @@ import { TeamModule } from './teams/teams.module';
   providers: [
     PrismaService,
     JwtStrategy,
+    VectorStoreService,
     { provide: APP_GUARD, useClass: RolesGuard },
     // { provide: APP_GUARD, useClass: TeamRoleGuard }, // 전역 적용시
   ],
   // controllers: [BrandController], // ← 이 줄을 삭제 또는 주석처리!
-  exports: [PrismaService],
+  exports: [
+    PrismaService,
+    VectorStoreService,
+  ],
 })
 export class AppModule {}

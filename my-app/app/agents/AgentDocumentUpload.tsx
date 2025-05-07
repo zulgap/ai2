@@ -5,6 +5,7 @@ import React, { useRef } from 'react';
 interface AgentDocumentUploadProps {
   agentId: string;
   teamId: string;
+  brandId: string; // ← 추가!
   uploadFiles: File[];
   setUploadFiles: (files: File[]) => void;
   uploadDocDescs: string[];
@@ -17,6 +18,7 @@ interface AgentDocumentUploadProps {
 export default function AgentDocumentUpload({
   agentId,
   teamId,
+  brandId, // ← 추가!
   uploadFiles,
   setUploadFiles,
   uploadDocDescs,
@@ -77,11 +79,11 @@ export default function AgentDocumentUpload({
       formData.append('isTeamOnly', 'false');
       formData.append('isBrandOnly', 'false');
       formData.append('isAgentOnly', 'true');
+      formData.append('brandId', brandId); // ← 폼데이터에 추가
       // 가이드라인을 metadata에도 JSON 형태로 추가
-      formData.append('metadata', JSON.stringify({ guide: desc }));
+      formData.append('metadata', desc); // 또는 metadata를 아예 빼고, description만 사용
       // 필요하다면 아래도 추가
-      // formData.append('embedding', ...);
-      // formData.append('vectorized', 'true');
+      formData.append('vectorized', 'true');
 
       await fetch(`/api/agents/${agentId}/documents`, {
         method: 'POST',

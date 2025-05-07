@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { extractTextFromFile } from '../document/utilles/extractTextFromFile';
-import { processAndStoreTextToVectorStore } from '../document/vectorstore/vectorstore.service';
 import { DocumentService } from '../document/document.service'; // ← 추가
+import { VectorStoreService } from '../document/vectorstore/vectorstore.service';
 
 function parseJson(value: any) {
   if (!value) return undefined;
@@ -77,7 +77,8 @@ export class TeamService {
 export class TeamDocumentService {
   constructor(
     private prisma: PrismaService,
-    private documentService: DocumentService // ← 타입 명확히!
+    private documentService: DocumentService, // ← 타입 명확히!
+    private vectorStoreService: VectorStoreService // ← 추가
   ) {}
 
   async findAllByTeam(teamId: string) {
@@ -129,7 +130,7 @@ export class TeamDocumentService {
 
     // 3. 청크/임베딩/벡터스토어 저장
     if (docContent) {
-      await processAndStoreTextToVectorStore(docContent, {
+      await this.vectorStoreService.processAndStoreTextToVectorStore(docContent, {
         documentId: document.id,
         teamId,
         title,

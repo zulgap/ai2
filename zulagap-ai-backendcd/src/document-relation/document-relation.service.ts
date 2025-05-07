@@ -13,7 +13,7 @@ export class DocumentRelationsService {
     type: string;
     prompt?: string;
     seq?: number;
-    brandId: string;
+    brandId?: string;
     agentId?: string;
     teamId?: string;
     workflowId?: string;
@@ -21,10 +21,17 @@ export class DocumentRelationsService {
   }) {
     console.log('[BACK] DocumentRelationsService.create data:', data);
 
-    // 필수값 검증
-    if (!data.fromId || !data.toId || !data.type || !data.brandId) {
+    // 필수값 검증 (brandId, agentId, teamId 중 하나는 반드시 있어야 함)
+    if (
+      !data.fromId ||
+      !data.toId ||
+      !data.type ||
+      (!data.brandId && !data.agentId && !data.teamId)
+    ) {
       console.error('[BACK] 필수값 누락:', data);
-      throw new BadRequestException('필수값(fromId, toId, type, brandId)이 누락되었습니다.');
+      throw new BadRequestException(
+        '필수값(fromId, toId, type, brandId|agentId|teamId)이 누락되었습니다.'
+      );
     }
 
     // (선택) 실제 문서/브랜드 존재 여부 확인

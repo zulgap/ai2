@@ -50,6 +50,32 @@ export default function TeamRelationForm({
     setLoading(false);
   };
 
+  // 여러 관계 저장
+  const handleSaveRelations = async (relations: any[]) => {
+    if (!selectedTeamId || !Array.isArray(relations) || relations.length === 0) {
+      alert('팀과 관계 목록을 모두 입력해주세요.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/teams/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId: selectedTeamId, relations }),
+      });
+      if (!res.ok) {
+        alert('관계 저장 실패');
+        setLoading(false);
+        return;
+      }
+      alert('관계가 저장되었습니다.');
+      // 필요시 입력 초기화 등 추가
+    } catch (e) {
+      alert('관계 저장 중 오류');
+    }
+    setLoading(false);
+  };
+
   return (
     <div>
       <h2 className="font-bold mb-4 text-lg">3. 문서 관계 입력 및 저장</h2>

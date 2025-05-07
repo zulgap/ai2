@@ -28,13 +28,6 @@ export default function AgentsPage() {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadDocDescs, setUploadDocDescs] = useState<string[]>([]);
 
-  // 관계 폼
-  const [relationFrom, setRelationFrom] = useState('');
-  const [relationTo, setRelationTo] = useState('');
-  const [relationType, setRelationType] = useState('');
-  const [relationPrompt, setRelationPrompt] = useState('');
-  const [relations, setRelations] = useState<any[]>([]);
-
   // 디버그 메시지
   const [debugMsg, setDebugMsg] = useState<string>('');
 
@@ -104,59 +97,6 @@ export default function AgentsPage() {
     setStep(3);
   };
 
-  // 관계 추가/삭제/저장
-  const addRelation = () => {
-    setDebugMsg('');
-    if (!relationFrom || !relationTo || !relationType) {
-      setDebugMsg('관계 추가: 필수값 누락');
-      return;
-    }
-    setRelations(prev => [
-      ...prev,
-      {
-        from: relationFrom,
-        to: relationTo,
-        type: relationType,
-        prompt: relationPrompt,
-      },
-    ]);
-    setRelationFrom('');
-    setRelationTo('');
-    setRelationType('');
-    setRelationPrompt('');
-    setDebugMsg('관계 추가 완료');
-  };
-
-  const removeRelation = (idx: number) => {
-    setRelations(prev => prev.filter((_, i) => i !== idx));
-    setDebugMsg(`관계 삭제: ${idx}번`);
-  };
-
-  const saveRelations = async () => {
-    setDebugMsg('관계 저장 시작');
-    try {
-      for (const rel of relations) {
-        const res = await fetch(`/api/agents/${selectedAgent.id}/documents/relations`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            relations: [rel],
-            agentId: selectedAgent.id,
-          }),
-        });
-        if (!res.ok) {
-          const msg = await res.text();
-          setDebugMsg(`관계 저장 실패: ${msg}`);
-          return;
-        }
-      }
-      setRelations([]);
-      setDebugMsg('관계 저장 완료');
-    } catch (e) {
-      setDebugMsg(`관계 저장 오류: ${e}`);
-    }
-  };
-
   // 삭제
   const handleDelete = async (id: string) => {
     try {
@@ -203,6 +143,7 @@ export default function AgentsPage() {
         <AgentDocumentUpload
           agentId={selectedAgent.id}
           teamId={selectedTeamId}
+          brandId={selectedBrandId}
           uploadFiles={uploadFiles}
           setUploadFiles={setUploadFiles}
           uploadDocDescs={uploadDocDescs}
@@ -215,19 +156,6 @@ export default function AgentsPage() {
         <AgentRelationForm
           documents={agentDocs}
           RELATION_TYPES={RELATION_TYPES}
-          relationFrom={relationFrom}
-          setRelationFrom={setRelationFrom}
-          relationTo={relationTo}
-          setRelationTo={setRelationTo}
-          relationType={relationType}
-          setRelationType={setRelationType}
-          relationPrompt={relationPrompt}
-          setRelationPrompt={setRelationPrompt}
-          relations={relations}
-          addRelation={addRelation}
-          removeRelation={removeRelation}
-          saveRelations={saveRelations}
-          disabled={relations.length === 0}
           selectedAgentId={selectedAgent.id}
         />
       )}

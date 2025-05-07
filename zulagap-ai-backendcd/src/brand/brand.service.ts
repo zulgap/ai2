@@ -158,12 +158,8 @@ export class BrandService {
       }
 
       // 3. 문서별 가이드라인(metadata) 업데이트
-      console.log('docGuides:', docGuides);
-      console.log('documents:', documents);
-
       if (docGuides && documents && documents.length > 0) {
         for (const [docId, guide] of Object.entries(docGuides)) {
-          console.log('Updating doc:', docId, 'with guide:', guide);
           if (documents.includes(docId)) {
             const doc = await tx.document.findUnique({ where: { id: docId } });
             const prevMeta = typeof doc?.metadata === 'object' && doc.metadata !== null ? doc.metadata : {};
@@ -175,22 +171,38 @@ export class BrandService {
         }
       }
 
-      // 4. 문서 관계 업데이트 (기존 관계 삭제 후 재생성)
+      // 4. 문서 관계 업데이트 (선택한 문서만 삭제 후 재생성)
       if (relations && Array.isArray(relations)) {
-        await tx.documentRelation.deleteMany({ where: { brandId: id } });
-        for (const rel of relations) {
-          const fromExists = await tx.document.findUnique({ where: { id: rel.fromId } });
-          const toExists = await tx.document.findUnique({ where: { id: rel.toId } });
-          if (!fromExists || !toExists) continue;
-          await tx.documentRelation.create({
-            data: {
-              fromId: rel.fromId,
-              toId: rel.toId,
-              type: rel.type,
-              prompt: rel.prompt,
-              seq: rel.seq,
-              brandId: id,
-            },
+        // 수정 대상 문서 id 목록 추출
+        const docIds = Array.from(new Set(relations.map(r => r.fromId)));
+
+        // 1. 해당 문서들의 기존 관계만 삭제
+        await tx.documentRelation.deleteMany({
+          where: {
+            brandId: id,
+            fromId: { in: docIds },
+          },
+        });
+
+        // 2. 새 관계 일괄 추가 (createMany)
+        if (relations.length > 0) {
+          const data = relations.map((rel: any) => ({
+            fromId: rel.fromId,
+            toId: rel.toId,
+            type: rel.type,
+            prompt: rel.prompt,
+            seq: rel.seq,
+            brandId: id,
+          }));
+          await tx.documentRelation.createMany({ data });
+        }
+
+        // 3. relations 필드 동기화
+        for (const docId of docIds) {
+          const relsForDoc = relations.filter(r => r.fromId === docId);
+          await tx.document.update({
+            where: { id: docId, brandId: id },
+            data: { relations: relsForDoc },
           });
         }
       }

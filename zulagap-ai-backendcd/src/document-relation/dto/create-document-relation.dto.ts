@@ -4,5 +4,7 @@ export class CreateDocumentRelationDto {
   type: string;
   prompt?: string;
   seq?: number;
-  brandId: string; // ← 이 줄 추가
+  brandId?: string;   // ← 선택값으로 변경
+  agentId?: string;   // ← 추가
+  teamId?: string;    // ← 추가
 }

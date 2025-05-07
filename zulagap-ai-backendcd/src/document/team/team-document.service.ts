@@ -1,11 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { extractTextFromFile } from '../utilles/extractTextFromFile';
-import { processAndStoreTextToVectorStore } from '../vectorstore/vectorstore.service';
+import { VectorStoreService } from '../vectorstore/vectorstore.service';
 
 @Injectable()
 export class TeamDocumentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private vectorStoreService: VectorStoreService, // ← 의존성 주입
+  ) {}
 
   // 문서 상세 조회 (청크 포함)
   async findOneByTeam(teamId: string, documentId: string) {
@@ -30,7 +33,7 @@ export class TeamDocumentService {
       content = content ?? await extractTextFromFile(file);
       size = file.size;
       mimetype = file.mimetype;
-      title = title ?? file.originalname; // ← 수정
+      title = title ?? file.originalname;
     }
 
     // 필수값 체크
@@ -64,7 +67,7 @@ export class TeamDocumentService {
     });
 
     if (content) {
-      await processAndStoreTextToVectorStore(content, {
+      await this.vectorStoreService.processAndStoreTextToVectorStore(content, {
         documentId: doc.id,
         teamId,
         brandId: data.brandId,
@@ -81,38 +84,44 @@ export class TeamDocumentService {
     });
   }
 
-  // relations: [{from, to, ...}, ...] 배열 전체를 받아서
+  // relations: [{from, to, ...}, ...] 배열 전체를 받아서 저장
   async saveRelations(teamId: string, relations: any[]) {
     if (!Array.isArray(relations)) throw new Error('relations must be array');
 
-    // 1. 기존 관계 삭제 (해당 팀의 모든 관계)
-    await this.prisma.documentRelation.deleteMany({
-      where: { teamId },
-    });
+    // 수정 대상 문서 id 목록 추출
+    const docIds = Array.from(new Set(relations.map(r => r.from)));
 
-    // 2. 새 관계 추가
-    for (const rel of relations) {
-      await this.prisma.documentRelation.create({
-        data: {
+    await this.prisma.$transaction(async (tx) => {
+      // 1. 해당 문서들의 기존 관계만 삭제
+      await tx.documentRelation.deleteMany({
+        where: {
+          teamId,
+          fromId: { in: docIds },
+        },
+      });
+
+      // 2. 새 관계 일괄 추가 (createMany)
+      if (relations.length > 0) {
+        const data = relations.map((rel: any) => ({
           fromId: rel.from,
           toId: rel.to,
           teamId,
           brandId: rel.brandId ?? null,
           type: rel.type,
           prompt: rel.prompt,
-        },
-      });
-    }
+        }));
+        await tx.documentRelation.createMany({ data });
+      }
 
-    // 3. (선택) 문서의 relations JSON 필드도 동기화
-    const docIds = Array.from(new Set(relations.map(r => r.from)));
-    for (const docId of docIds) {
-      const relsForDoc = relations.filter(r => r.from === docId);
-      await this.prisma.document.update({
-        where: { id: docId, teamId },
-        data: { relations: relsForDoc },
-      });
-    }
+      // 3. relations 필드 동기화
+      for (const docId of docIds) {
+        const relsForDoc = relations.filter(r => r.from === docId);
+        await tx.document.update({
+          where: { id: docId, teamId },
+          data: { relations: relsForDoc },
+        });
+      }
+    });
 
     return { success: true };
   }

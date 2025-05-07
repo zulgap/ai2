@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { DocumentController } from './document.controller';
 import { DocumentService } from './document.service';
 import { AgentService } from '../agent/agent.service';
@@ -15,16 +15,17 @@ import { TeamDocumentController } from './team/team-document.controller';
 import { TeamDocumentService } from './team/team-document.service';
 import { BrandDocumentController } from './brand/brand-document.controller';
 import { BrandDocumentService } from './brand/brand-document.service';
+import { VectorStoreService } from './vectorstore/vectorstore.service';
 
 @Module({
-  imports: [TeamModule, PrismaModule, DocumentRelationModule],
+  imports: [forwardRef(() => TeamModule), PrismaModule, DocumentRelationModule],
   controllers: [
     DocumentController,
     RagController,
     VectorStoreController,
     VectorSearchController,
     TeamDocumentController,
-    BrandDocumentController, // ← 추가!
+    BrandDocumentController,
   ],
   providers: [
     DocumentService,
@@ -34,8 +35,9 @@ import { BrandDocumentService } from './brand/brand-document.service';
     RagService,
     VectorSearchService,
     TeamDocumentService,
-    BrandDocumentService, // ← 추가!
+    BrandDocumentService,
+    VectorStoreService,
   ],
-  exports: [DocumentService],
+  exports: [DocumentService, VectorStoreService],
 })
 export class DocumentModule {}

@@ -31,11 +31,32 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const teamId = searchParams.get('teamId');
+
+  // 관계 저장 요청인지 확인 (body에 relations가 있으면 관계 저장)
+  const contentType = request.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const body = await request.json();
+    if (body?.relations && Array.isArray(body.relations)) {
+      // 다수의 관계 저장
+      if (!teamId && !body.teamId) {
+        return NextResponse.json({ error: 'teamId required' }, { status: 400 });
+      }
+      const realTeamId = teamId || body.teamId;
+      const res = await fetch(`${BACKEND_URL}/teams/${realTeamId}/documents/relations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ relations: body.relations }),
+      });
+      const data = await res.json();
+      return NextResponse.json(data, { status: res.status });
+    }
+  }
+
+  // 기본: 파일 업로드
   if (!teamId) {
     return NextResponse.json({ error: 'teamId required' }, { status: 400 });
   }
   const formData = await request.formData();
-  // 백엔드 엔드포인트에 맞게 경로 수정
   const res = await fetch(`${BACKEND_URL}/teams/${teamId}/documents`, {
     method: 'POST',
     body: formData,

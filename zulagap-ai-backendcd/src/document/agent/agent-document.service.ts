@@ -1,11 +1,14 @@
 import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { extractTextFromFile } from '../utilles/extractTextFromFile';
-import { processAndStoreTextToVectorStore } from '../vectorstore/vectorstore.service';
+import { VectorStoreService } from '../vectorstore/vectorstore.service';
 
 @Injectable()
 export class AgentDocumentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private vectorStoreService: VectorStoreService, // ← 의존성 주입
+  ) {}
 
   // 문서 상세 조회 (청크 포함)
   async findOneByAgent(agentId: string, documentId: string) {
@@ -25,25 +28,50 @@ export class AgentDocumentService {
       let embedding = data?.embedding;
       let vectorized = data?.vectorized === 'true' || data?.vectorized === true;
       let title = data?.title;
+      let metadata = data?.metadata;
+
+      // 에이전트 특성: metadata 파싱 및 보정
+      if (typeof metadata === 'string') {
+        try {
+          metadata = JSON.parse(metadata);
+        } catch {
+          metadata = { guide: metadata };
+        }
+      }
 
       // 파일이 있으면 파일 정보로 보정
       if (file) {
         content = content ?? await extractTextFromFile(file);
         size = file.size;
         mimetype = file.mimetype;
-        title = title ?? file.originalname; // ← 수정
+        title = title ?? file.originalname;
       }
 
-      // 필수값 체크
+      // 필수값 체크 (에이전트 특성: agentId 필수)
       if (!title) throw new BadRequestException('title is required');
       if (!size || isNaN(Number(size))) throw new BadRequestException('size is required');
       if (!mimetype) throw new BadRequestException('mimetype is required');
       if (!content) throw new BadRequestException('content is required (파일 또는 본문 필요)');
+      if (!agentId) throw new BadRequestException('agentId is required');
 
       // JSON 파싱
       if (typeof relations === 'string') relations = JSON.parse(relations);
-      if (typeof embedding === 'string') embedding = JSON.parse(embedding);
 
+      // JSON 파싱 및 로그 추가
+      console.log('[임베딩 원본]', data.embedding);
+      if (typeof embedding === 'string') {
+        try {
+          embedding = JSON.parse(embedding);
+          console.log('[임베딩 파싱 성공]', embedding);
+        } catch (e) {
+          console.error('[임베딩 파싱 실패]', e);
+          embedding = undefined;
+        }
+      } else {
+        console.log('[임베딩 파싱 불필요]', embedding);
+      }
+
+      // 에이전트 특성: isAgentOnly true, isTeamOnly/BrandOnly false
       const doc = await this.prisma.document.create({
         data: {
           title,
@@ -54,7 +82,7 @@ export class AgentDocumentService {
           teamId: data.teamId,
           workflowId: data.workflowId,
           nodeId: data.nodeId,
-          metadata: data.metadata,
+          metadata,
           relations,
           embedding,
           vectorized,
@@ -65,8 +93,9 @@ export class AgentDocumentService {
         },
       });
 
+      // 벡터스토어 저장 (청크/임베딩)
       if (content) {
-        await processAndStoreTextToVectorStore(content, {
+        await this.vectorStoreService.processAndStoreTextToVectorStore(content, {
           documentId: doc.id,
           agentId,
           brandId: data.brandId,
@@ -76,7 +105,6 @@ export class AgentDocumentService {
 
       return doc;
     } catch (e) {
-      // NestJS가 에러를 정상적으로 응답하도록
       if (e instanceof BadRequestException) throw e;
       throw new InternalServerErrorException(e?.message || e);
     }
@@ -93,15 +121,21 @@ export class AgentDocumentService {
   async saveRelations(agentId: string, relations: any[]) {
     if (!Array.isArray(relations)) throw new Error('relations must be array');
 
-    // 1. 기존 관계 삭제 (해당 agent의 모든 관계)
-    await this.prisma.documentRelation.deleteMany({
-      where: { agentId },
-    });
+    // 수정 대상 문서 id 목록 추출
+    const docIds = Array.from(new Set(relations.map(r => r.from)));
 
-    // 2. 새 관계 추가
-    for (const rel of relations) {
-      await this.prisma.documentRelation.create({
-        data: {
+    await this.prisma.$transaction(async (tx) => {
+      // 1. 해당 문서들의 기존 관계만 삭제
+      await tx.documentRelation.deleteMany({
+        where: {
+          agentId,
+          fromId: { in: docIds },
+        },
+      });
+
+      // 2. 새 관계 일괄 추가 (createMany)
+      if (relations.length > 0) {
+        const data = relations.map((rel: any) => ({
           fromId: rel.from,
           toId: rel.to,
           agentId,
@@ -109,19 +143,19 @@ export class AgentDocumentService {
           teamId: rel.teamId ?? null,
           type: rel.type,
           prompt: rel.prompt,
-        },
-      });
-    }
+        }));
+        await tx.documentRelation.createMany({ data });
+      }
 
-    // 3. (선택) 문서의 relations JSON 필드도 동기화
-    const docIds = Array.from(new Set(relations.map(r => r.from)));
-    for (const docId of docIds) {
-      const relsForDoc = relations.filter(r => r.from === docId);
-      await this.prisma.document.update({
-        where: { id: docId, agentId },
-        data: { relations: relsForDoc },
-      });
-    }
+      // 3. 문서의 relations JSON 필드 동기화
+      for (const docId of docIds) {
+        const relsForDoc = relations.filter(r => r.from === docId);
+        await tx.document.update({
+          where: { id: docId, agentId },
+          data: { relations: relsForDoc },
+        });
+      }
+    });
 
     return { success: true };
   }

@@ -23,6 +23,15 @@ export class AgentDocumentController {
     return this.agentDocService.createForAgent(agentId, body, file);
   }
 
+  @Post('relations')
+  async saveRelations(
+    @Param('agentId') agentId: string,
+    @Body() body: any,
+  ) {
+    // body.relations: [{from, to, type, prompt}]
+    return this.agentDocService.saveRelations(agentId, body.relations);
+  }
+
   @Delete(':documentId')
   async removeFromAgent(
     @Param('agentId') agentId: string,

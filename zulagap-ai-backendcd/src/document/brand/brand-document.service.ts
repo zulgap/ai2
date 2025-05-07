@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DocumentService } from '../document.service';
 import { extractTextFromFile } from '../utilles/extractTextFromFile';
-import { processAndStoreTextToVectorStore } from '../vectorstore/vectorstore.service';
+import { VectorStoreService } from '../vectorstore/vectorstore.service'; // 변경: 서비스 import
 
 function parseJson(value: any) {
   if (!value) return undefined;
@@ -17,7 +17,8 @@ function parseJson(value: any) {
 export class BrandDocumentService {
   constructor(
     private prisma: PrismaService,
-    private documentService: DocumentService, // DocumentService 주입
+    private documentService: DocumentService,
+    private vectorStoreService: VectorStoreService, // ← 의존성 주입
   ) {}
 
   // 브랜드별 문서 목록 조회
@@ -72,7 +73,7 @@ export class BrandDocumentService {
 
       // 3. 청크/임베딩/벡터스토어 저장
       if (docContent) {
-        await processAndStoreTextToVectorStore(docContent, {
+        await this.vectorStoreService.processAndStoreTextToVectorStore(docContent, {
           documentId: document.id,
           brandId,
           title,

@@ -220,6 +220,10 @@ model DocumentChunk {
   chunkIndex Int
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  agentId    String?  // ← 추가
+  brandId    String?  // ← 추가
+  teamId     String?  // ← 추가
 }
 
 // 기타 모델 (예시)
