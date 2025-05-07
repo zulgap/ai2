@@ -119,6 +119,9 @@ export default function WorkflowPage() {
     setNodes(nodes.filter(n => n.id !== id));
   };
 
+  // 예시: 로그인된 사용자 정보에서 userId를 가져온다고 가정
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
+
   // 워크플로우 생성
   const handleCreateWorkflow = async () => {
     if (!selectedBrandId || !selectedTeamId || !workflowName) {
@@ -137,6 +140,7 @@ export default function WorkflowPage() {
         isPublic,
         teamLeaderType,
         leaderAgentId: teamLeaderType === 'SINGLE' ? leaderAgentId : undefined,
+        userId, // ← 반드시 포함
         nodes: nodes.map(n => ({
           name: n.name,
           type: n.type,
@@ -249,11 +253,22 @@ export default function WorkflowPage() {
     setSuccessMsg('');
     setLoading(true);
 
+    let parsedInput: any = {};
+    if (executeInput) {
+      try {
+        parsedInput = JSON.parse(executeInput);
+      } catch {
+        setErrorMsg('입력값은 JSON 형식이어야 합니다.');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const res = await fetch(`/api/workflows/${executeWorkflowId}/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: executeInput }),
+        body: JSON.stringify({ input: parsedInput }), // userId 제거
       });
       const data = await res.json();
       const executionId = data.executionId || data.id || null;
@@ -299,6 +314,28 @@ export default function WorkflowPage() {
       { role: 'assistant', content: data.response || JSON.stringify(data) },
     ]);
     setChatInput('');
+  };
+
+  // 워크플로우 실행 상태 업데이트
+  const handleUpdateExecutionStatus = async (executionId: string, status: 'RUNNING' | 'COMPLETED' | 'FAILED', error?: string) => {
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const res = await fetch(`/api/workflow-executions/${executionId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, error }),
+      });
+      if (!res.ok) throw new Error('상태 변경 실패');
+      setSuccessMsg('실행 상태가 변경되었습니다.');
+      // 필요시 실행 이력 새로고침
+      if (selectedWorkflow) fetchWorkflowHistory(selectedWorkflow.id);
+    } catch {
+      setErrorMsg('실행 상태 변경 실패');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 팀장/팀원 구분
@@ -615,10 +652,16 @@ export default function WorkflowPage() {
                   <li key={h.id}>
                     {h.id} - {h.status} - {h.createdAt?.slice(0, 19).replace('T', ' ')}
                     <button
-                      className="ml-2 text-blue-500 underline"
-                      onClick={() => fetchConversation(h.id)}
+                      className="ml-2 text-green-600 underline"
+                      onClick={() => handleUpdateExecutionStatus(h.id, 'COMPLETED')}
                     >
-                      대화보기
+                      완료로 변경
+                    </button>
+                    <button
+                      className="ml-2 text-red-600 underline"
+                      onClick={() => handleUpdateExecutionStatus(h.id, 'FAILED', '에러 메시지')}
+                    >
+                      실패로 변경
                     </button>
                   </li>
                 ))}

@@ -1,68 +1,87 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000/api/workflows';
+const BACKEND_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000/api';
 
+// 워크플로우 목록 조회
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const brandId = searchParams.get('brandId');
-  let url = BACKEND_URL;
-  if (brandId) {
-    url += `?brandId=${encodeURIComponent(brandId)}`;
+  try {
+    const res = await fetch(`${BACKEND_BASE}/workflows`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) {
+      console.error('[API][GET] 백엔드 응답 에러:', res.status, res.statusText);
+      return NextResponse.json({ error: '백엔드 GET 요청 실패', status: res.status }, { status: res.status });
+    }
+    const data = await res.json();
+    return NextResponse.json(Array.isArray(data) ? data : (data.workflows || data.data || []));
+  } catch (err: any) {
+    console.error('[API][GET] 예외 발생:', err?.message || err);
+    return NextResponse.json({ error: 'API GET 처리 중 예외 발생', detail: err?.message || err }, { status: 500 });
   }
-  const res = await fetch(url, { cache: 'no-store' });
-  const data = await res.json();
-  const workflows = Array.isArray(data) ? data : [];
-  const workflowsWithName = workflows.map(wf => ({
-    ...wf,
-    name: wf.name && wf.name.trim() !== '' ? wf.name : wf.team?.name || '(이름없음)',
-  }));
-  return NextResponse.json(workflowsWithName);
 }
 
+// 워크플로우 생성
 export async function POST(req: NextRequest) {
   const body = await req.json();
-
-  // === 싱글팀장 워크플로우 노드 검증 ===
-  if (body.teamLeaderType === 'SINGLE' && Array.isArray(body.nodes) && body.nodes.length >= 2) {
-    const leaderAgentId = body.leaderAgentId;
-    const firstNode = body.nodes[0];
-    const lastNode = body.nodes[body.nodes.length - 1];
-    if (
-      firstNode.leaderAgentId !== leaderAgentId ||
-      lastNode.leaderAgentId !== leaderAgentId
-    ) {
-      return NextResponse.json(
-        { error: '싱글팀장 워크플로우는 처음과 끝 노드에 팀장 에이전트가 할당되어야 합니다.' },
-        { status: 400 }
-      );
+  try {
+    const res = await fetch(`${BACKEND_BASE}/workflows`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      console.error('[API][POST] 백엔드 응답 에러:', res.status, res.statusText, errorData);
+      return NextResponse.json({ error: '백엔드 POST 요청 실패', detail: errorData, status: res.status }, { status: res.status });
     }
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (err: any) {
+    console.error('[API][POST] 예외 발생:', err?.message || err);
+    return NextResponse.json({ error: 'API POST 처리 중 예외 발생', detail: err?.message || err }, { status: 500 });
   }
-
-  const res = await fetch(BACKEND_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  return NextResponse.json(data);
 }
 
+// 워크플로우 수정 (PATCH)
 export async function PATCH(req: NextRequest) {
   const { id, ...body } = await req.json();
-  const res = await fetch(`${BACKEND_URL}/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  return NextResponse.json(data);
+  try {
+    const res = await fetch(`${BACKEND_BASE}/workflows/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      console.error('[API][PATCH] 백엔드 응답 에러:', res.status, res.statusText, errorData);
+      return NextResponse.json({ error: '백엔드 PATCH 요청 실패', detail: errorData, status: res.status }, { status: res.status });
+    }
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (err: any) {
+    console.error('[API][PATCH] 예외 발생:', err?.message || err);
+    return NextResponse.json({ error: 'API PATCH 처리 중 예외 발생', detail: err?.message || err }, { status: 500 });
+  }
 }
 
+// 워크플로우 삭제
 export async function DELETE(req: NextRequest) {
   const { id } = await req.json();
-  const res = await fetch(`${BACKEND_URL}/${id}`, {
-    method: 'DELETE',
-  });
-  const data = await res.json();
-  return NextResponse.json(data);
+  try {
+    const res = await fetch(`${BACKEND_BASE}/workflows/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      console.error('[API][DELETE] 백엔드 응답 에러:', res.status, res.statusText, errorData);
+      return NextResponse.json({ error: '백엔드 DELETE 요청 실패', detail: errorData, status: res.status }, { status: res.status });
+    }
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (err: any) {
+    console.error('[API][DELETE] 예외 발생:', err?.message || err);
+    return NextResponse.json({ error: 'API DELETE 처리 중 예외 발생', detail: err?.message || err }, { status: 500 });
+  }
 }

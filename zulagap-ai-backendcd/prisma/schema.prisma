@@ -77,8 +77,8 @@ model Workflow {
   description    String?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @default(now())
-  userId         String
-  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String?             // ← ? 추가 (nullable)
+  user           User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
   teamId         String?
   team           Team?               @relation(fields: [teamId], references: [id], onDelete: SetNull)
   brandId        String?
@@ -109,11 +109,13 @@ model WorkflowExecution {
   output         Json?
   error          String?
   logs           Json?
+  leaderReasoningLog Json?      // 팀장 추론/의도 해석 로그
   workflow       Workflow       @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   agentSession   AgentSession?  @relation("AgentSessionToWorkflowExecution", fields: [agentSessionId], references: [id], onDelete: SetNull)
   conversations  Conversation[]
   messages       Message[]
+  feedbacks      AgentFeedback[]
 }
 
 // 노드 모델
@@ -134,6 +136,7 @@ model Node {
   order         Int
   messages      Message[]
   documentRelations DocumentRelation[] @relation("NodeOnRelation")
+  feedbacks     AgentFeedback[] @relation("NodeToAgentFeedback")
 }
 
 // 에이전트 모델
@@ -169,6 +172,10 @@ model Agent {
   workflows         Workflow[]     @relation("AgentWorkflows")
   messages          Message[]
   documentRelations DocumentRelation[] @relation("AgentOnRelation")
+  isTeamLeader      Boolean        @default(false) // 팀장 여부
+  reasoningConfig   Json?          // 팀장 추론 옵션/프롬프트 등
+  feedbacksGiven    AgentFeedback[] @relation("FeedbackFromAgent")
+  feedbacksReceived AgentFeedback[] @relation("FeedbackToAgent")
 }
 
 // 문서 모델
@@ -320,4 +327,20 @@ model DocumentRelation {
   createdAt DateTime @default(now())
 
   @@unique([fromId, toId, type, brandId, agentId, teamId, workflowId, nodeId])
+}
+
+// 피드백/컨펌/수정 요청 일관성 기록 모델
+model AgentFeedback {
+  id                  String   @id @default(uuid())
+  workflowExecutionId String
+  nodeId              String
+  fromAgentId         String   // 피드백 제공자(주로 팀장)
+  toAgentId           String   // 피드백 받는 에이전트
+  feedbackType        String   // 예: 'approve', 'request_change', 'comment'
+  content             String
+  createdAt           DateTime @default(now())
+  workflowExecution   WorkflowExecution @relation(fields: [workflowExecutionId], references: [id])
+  node                Node     @relation("NodeToAgentFeedback", fields: [nodeId], references: [id])
+  fromAgent           Agent    @relation("FeedbackFromAgent", fields: [fromAgentId], references: [id])
+  toAgent             Agent    @relation("FeedbackToAgent", fields: [toAgentId], references: [id])
 }
