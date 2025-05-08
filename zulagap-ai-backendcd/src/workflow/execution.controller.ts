@@ -1,18 +1,13 @@
-import { Controller, Post, Patch, Param, Body } from '@nestjs/common';
+import { Controller, Patch, Param, Body, Get } from '@nestjs/common';
 import { ExecutionService } from './execution.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('workflow-executions')
 export class ExecutionController {
-  constructor(private readonly executionService: ExecutionService) {}
-
-  @Post(':workflowId/execute')
-  async executeWorkflow(
-    @Param('workflowId') workflowId: string,
-    @Body() body: { userId: string; input?: any }
-  ) {
-    // userId는 프론트에서 전달받거나 인증에서 추출
-    return this.executionService.execute(workflowId, body.userId, body.input);
-  }
+  constructor(
+    private readonly executionService: ExecutionService,
+    private readonly prisma: PrismaService
+  ) {}
 
   // 실행 상태 변경 (진행중/완료/실패 등)
   @Patch(':executionId/status')
@@ -21,5 +16,39 @@ export class ExecutionController {
     @Body() body: { status: 'RUNNING' | 'COMPLETED' | 'FAILED'; error?: string }
   ) {
     return this.executionService.updateStatus(executionId, body.status, body.error);
+  }
+
+  // 실행 정보 조회
+  @Get(':executionId')
+  async getExecution(@Param('executionId') executionId: string) {
+    // 직접 Prisma로 조회
+    return this.prisma.workflowExecution.findUnique({
+      where: { id: executionId },
+      include: {
+        workflow: true,
+        conversations: {
+          include: {
+            messages: true,
+          },
+        },
+      },
+    });
+  }
+
+  // 워크플로우별 실행 목록 조회
+  @Get('workflow/:workflowId')
+  async getExecutionsByWorkflow(@Param('workflowId') workflowId: string) {
+    // 직접 Prisma로 조회
+    return this.prisma.workflowExecution.findMany({
+      where: { workflowId },
+      orderBy: { startedAt: 'desc' },
+      include: {
+        workflow: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
   }
 }

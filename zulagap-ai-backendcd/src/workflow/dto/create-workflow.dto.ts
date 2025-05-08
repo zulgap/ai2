@@ -6,10 +6,14 @@ export class CreateWorkflowDto {
   teamId?: string;
   teamLeaderType?: string;
   leaderAgentId?: string;
-  userId?: string; // ← 추가
+  userId?: string;
   nodes?: {
     name: string;
     type: string;
     leaderAgentId?: string;
+    workerAgentId?: string; // 이미 존재하는지 확인
+    order?: number;
+    position?: any;
+    data?: any;
   }[];
 }

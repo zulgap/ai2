@@ -3,15 +3,15 @@ import { ConversationService } from './conversation.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { AgentSessionService } from '../agent-session/agent-session.service';
-import { WorkflowExecutionService } from '../workflow-execution/workflow-execution.service';
+import { ExecutionService } from '../workflow/execution.service';
 import { WorkflowService } from '../workflow/workflow.service';
 
-@Controller('api/conversations')
+@Controller('conversations')
 export class ConversationController {
   constructor(
     private readonly conversationService: ConversationService,
     private readonly agentSessionService: AgentSessionService,
-    private readonly workflowExecutionService: WorkflowExecutionService,
+    private readonly executionService: ExecutionService,
     private readonly workflowService: WorkflowService,
   ) {}
 
@@ -56,7 +56,7 @@ export class ConversationController {
     @Param('workflowId') workflowId: string,
     @Body() body: { userId: string; input?: any }
   ) {
-    const execution = await this.workflowExecutionService.create({
+    const execution = await this.executionService.create({
       workflowId,
       userId: body.userId,
       input: body.input,

@@ -56,126 +56,135 @@ model User {
 
 // 팀 모델
 model Team {
-  id          String     @id @default(uuid())
-  name        String
-  description String?
-  brandId     String?
-  brand       Brand?     @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  createdAt   DateTime   @default(now())
-  documents   Document[]
-  agents      Agent[]
-  workflows   Workflow[]
-  category    String?
-  ragDocs     String[] // ← 추가
+  id                String             @id @default(uuid())
+  name              String
+  description       String?
+  brandId           String?
+  brand             Brand?             @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  createdAt         DateTime           @default(now())
+  documents         Document[]
+  agents            Agent[]
+  workflows         Workflow[]
+  category          String?
+  ragDocs           String[] // ← 추가
   documentRelations DocumentRelation[] @relation("TeamOnRelation")
 }
 
 // 워크플로우 모델
 model Workflow {
-  id             String              @id @default(uuid())
-  name           String
-  description    String?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @default(now())
-  userId         String?             // ← ? 추가 (nullable)
-  user           User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  teamId         String?
-  team           Team?               @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  brandId        String?
-  brand          Brand?              @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  agentId        String?
-  agent          Agent?              @relation("AgentWorkflows", fields: [agentId], references: [id])
-  isPublic       Boolean             @default(false)
-  config         Json?
-  nodes          Node[]
-  executions     WorkflowExecution[]
-  teamLeaderType TeamLeaderType      @default(SINGLE)
-  leaderAgentId  String?
-  leaderAgent    Agent?              @relation("WorkflowLeader", fields: [leaderAgentId], references: [id])
-  documents      Document[]
-  documentRelations DocumentRelation[] @relation("WorkflowOnRelation")
+  id                String              @id @default(uuid())
+  name              String
+  description       String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @default(now())
+  userId            String? // ← ? 추가 (nullable)
+  user              User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId            String?
+  team              Team?               @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  brandId           String?
+  brand             Brand?              @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  agentId           String?
+  agent             Agent?              @relation("AgentWorkflows", fields: [agentId], references: [id])
+  isPublic          Boolean             @default(false)
+  config            Json?
+  nodes             Node[]
+  executions        WorkflowExecution[]
+  teamLeaderType    TeamLeaderType      @default(SINGLE)
+  leaderAgentId     String?
+  leaderAgent       Agent?              @relation("WorkflowLeader", fields: [leaderAgentId], references: [id])
+  documents         Document[]
+  documentRelations DocumentRelation[]  @relation("WorkflowOnRelation")
 }
 
 // 워크플로우 실행 이력 모델
 model WorkflowExecution {
-  id             String         @id @default(uuid())
-  workflowId     String
-  userId         String
-  agentSessionId String?
-  startedAt      DateTime       @default(now())
-  endedAt        DateTime?
-  status         WorkflowStatus
-  input          Json?
-  output         Json?
-  error          String?
-  logs           Json?
-  leaderReasoningLog Json?      // 팀장 추론/의도 해석 로그
-  workflow       Workflow       @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agentSession   AgentSession?  @relation("AgentSessionToWorkflowExecution", fields: [agentSessionId], references: [id], onDelete: SetNull)
-  conversations  Conversation[]
-  messages       Message[]
-  feedbacks      AgentFeedback[]
+  id                 String          @id @default(uuid())
+  workflowId         String
+  userId             String? // ← String? (nullable)로 변경
+  agentSessionId     String?
+  startedAt          DateTime        @default(now())
+  endedAt            DateTime?
+  status             WorkflowStatus
+  input              Json?
+  output             Json?
+  error              String?
+  logs               Json?
+  leaderReasoningLog Json? // 팀장 추론/의도 해석 로그
+  workflow           Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user               User?           @relation(fields: [userId], references: [id], onDelete: Cascade) // ← User?로 변경
+  agentSession       AgentSession?   @relation("AgentSessionToWorkflowExecution", fields: [agentSessionId], references: [id], onDelete: SetNull)
+  conversations      Conversation[]
+  messages           Message[]
+  feedbacks          AgentFeedback[]
+  agentConfirms      AgentConfirm[] // ← 추가
+  nodeResults        NodeResult[] // ← 추가
 }
 
 // 노드 모델
 model Node {
-  id            String    @id @default(uuid())
-  type          String
-  name          String
-  position      Json
-  data          Json
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  workflowId    String
-  workflow      Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  inputs        Json?
-  outputs       Json?
-  leaderAgentId String?
-  leaderAgent   Agent?    @relation("NodeLeader", fields: [leaderAgentId], references: [id])
-  order         Int
-  messages      Message[]
+  id                String             @id @default(uuid())
+  type              String
+  name              String
+  position          Json
+  data              Json
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  workflowId        String
+  workflow          Workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  inputs            Json?
+  outputs           Json?
+  leaderAgentId     String?
+  leaderAgent       Agent?             @relation("NodeLeader", fields: [leaderAgentId], references: [id])
+  workerAgentId     String? // 추가: 팀원(담당자) ID
+  workerAgent       Agent?             @relation("NodeWorker", fields: [workerAgentId], references: [id]) // 추가: 팀원 관계
+  order             Int
+  messages          Message[]
   documentRelations DocumentRelation[] @relation("NodeOnRelation")
-  feedbacks     AgentFeedback[] @relation("NodeToAgentFeedback")
+  feedbacks         AgentFeedback[]    @relation("NodeToAgentFeedback")
+  agentConfirms     AgentConfirm[] // ← 추가
+  nodeResults       NodeResult[] // ← 추가
+  conversations     Conversation[]
 }
 
 // 에이전트 모델
 model Agent {
-  id                String         @id @default(uuid())
+  id                String             @id @default(uuid())
   name              String
   description       String?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @default(now())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @default(now())
   userId            String?
   teamId            String?
-  user              User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  team              Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  user              User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team              Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
   brandId           String?
-  brand             Brand?         @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  brand             Brand?             @relation(fields: [brandId], references: [id], onDelete: SetNull)
   config            Json
   conversations     Conversation[]
   sessions          AgentSession[]
-  isPublic          Boolean        @default(true) // 필수 & 기본값 공개(true)
+  isPublic          Boolean            @default(true) // 필수 & 기본값 공개(true)
   identity          Json?
   role              AgentRole?
-  workflowLeaderFor Workflow[]     @relation("WorkflowLeader")
-  nodeLeaderFor     Node[]         @relation("NodeLeader")
-  documents         Document[]     @relation("AgentDocuments")
+  workflowLeaderFor Workflow[]         @relation("WorkflowLeader")
+  nodeLeaderFor     Node[]             @relation("NodeLeader")
+  nodeWorkerFor     Node[]             @relation("NodeWorker") // 추가: 팀원으로서 담당하는 노드
+  documents         Document[]         @relation("AgentDocuments")
   parentAgentId     String?
-  parentAgent       Agent?         @relation("AgentParent", fields: [parentAgentId], references: [id])
-  childrenAgents    Agent[]        @relation("AgentParent")
+  parentAgent       Agent?             @relation("AgentParent", fields: [parentAgentId], references: [id])
+  childrenAgents    Agent[]            @relation("AgentParent")
   ragDocs           String[] // ← 이미 있음
   prompt            String?
   model             String?
   temperature       Float?
   type              String?
-  workflows         Workflow[]     @relation("AgentWorkflows")
+  workflows         Workflow[]         @relation("AgentWorkflows")
   messages          Message[]
   documentRelations DocumentRelation[] @relation("AgentOnRelation")
-  isTeamLeader      Boolean        @default(false) // 팀장 여부
-  reasoningConfig   Json?          // 팀장 추론 옵션/프롬프트 등
-  feedbacksGiven    AgentFeedback[] @relation("FeedbackFromAgent")
-  feedbacksReceived AgentFeedback[] @relation("FeedbackToAgent")
+  isTeamLeader      Boolean            @default(false) // 팀장 여부
+  reasoningConfig   Json? // 팀장 추론 옵션/프롬프트 등
+  feedbacksGiven    AgentFeedback[]    @relation("FeedbackFromAgent")
+  feedbacksReceived AgentFeedback[]    @relation("FeedbackToAgent")
+  agentConfirms     AgentConfirm[] // ← 추가
 }
 
 // 문서 모델
@@ -204,7 +213,7 @@ model Document {
   mimetype   String
 
   // 벡터스토리 완료 여부 추가
-  vectorized Boolean        @default(false)
+  vectorized Boolean @default(false)
 
   // 추가: 문서 관계 양방향 relation
   relationsFrom DocumentRelation[] @relation("FromDocument")
@@ -212,9 +221,9 @@ model Document {
   nodeId        String?
 
   // 추가: 전용 구분 불린값
-  isBrandOnly   Boolean     @default(false) // 브랜드 전용 문서 여부
-  isTeamOnly    Boolean     @default(false) // 팀 전용 문서 여부
-  isAgentOnly   Boolean     @default(false) // 에이전트 전용 문서 여부
+  isBrandOnly Boolean @default(false) // 브랜드 전용 문서 여부
+  isTeamOnly  Boolean @default(false) // 팀 전용 문서 여부
+  isAgentOnly Boolean @default(false) // 에이전트 전용 문서 여부
 }
 
 // 문서 청크 모델
@@ -228,9 +237,9 @@ model DocumentChunk {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  agentId    String?  // ← 추가
-  brandId    String?  // ← 추가
-  teamId     String?  // ← 추가
+  agentId String? // ← 추가
+  brandId String? // ← 추가
+  teamId  String? // ← 추가
 }
 
 // 기타 모델 (예시)
@@ -238,7 +247,7 @@ model Brand {
   id                String             @id @default(uuid())
   name              String
   identity          Json?
-  metadata          Json?              // ← 이 줄을 추가하세요!
+  metadata          Json? // ← 이 줄을 추가하세요!
   createdAt         DateTime           @default(now())
   documents         Document[]
   Team              Team[]
@@ -251,30 +260,33 @@ model Brand {
 model AgentSession {
   id                 String              @id @default(uuid())
   agentId            String
-  userId             String
+  userId             String? // ← String? (nullable)로 변경
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @default(now())
   messages           Json
   variables          Json?
   status             String?
   agent              Agent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User?               @relation(fields: [userId], references: [id], onDelete: Cascade) // ← User?로 변경
   workflowExecutions WorkflowExecution[] @relation("AgentSessionToWorkflowExecution")
+  nodeResults        NodeResult[] // ← 추가: NodeResult와의 관계
 }
 
+// Conversation 모델 수정
 model Conversation {
-  id                  String             @id @default(uuid())
+  id                  String   @id @default(uuid())
   title               String?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  userId              String
-  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agentId             String
-  agent               Agent              @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  userId              String?
+  user                User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentId             String?
+  agent               Agent?   @relation(fields: [agentId], references: [id], onDelete: Cascade) // Agent → Agent?
   messages            Message[]
-  workflowExecutionId String?
+  workflowExecutionId String
   workflowExecution   WorkflowExecution? @relation(fields: [workflowExecutionId], references: [id], onDelete: SetNull)
-  nodeId              String
+  nodeId              String?
+  node                Node?    @relation(fields: [nodeId], references: [id]) // Node → Node?
 }
 
 model Message {
@@ -304,22 +316,22 @@ model Session {
 }
 
 model DocumentRelation {
-  id         String   @id @default(uuid())
+  id         String  @id @default(uuid())
   fromId     String
   toId       String
-  brandId    String?  // ← ? 추가 (nullable)
+  brandId    String? // ← ? 추가 (nullable)
   agentId    String?
   teamId     String?
   workflowId String?
   nodeId     String?
 
-  from       Document @relation("FromDocument", fields: [fromId], references: [id])
-  to         Document @relation("ToDocument", fields: [toId], references: [id])
-  brand      Brand?   @relation("BrandOnRelation", fields: [brandId], references: [id])
-  agent      Agent?   @relation("AgentOnRelation", fields: [agentId], references: [id])
-  team       Team?    @relation("TeamOnRelation", fields: [teamId], references: [id])
-  workflow   Workflow?@relation("WorkflowOnRelation", fields: [workflowId], references: [id])
-  node       Node?    @relation("NodeOnRelation", fields: [nodeId], references: [id])
+  from     Document  @relation("FromDocument", fields: [fromId], references: [id])
+  to       Document  @relation("ToDocument", fields: [toId], references: [id])
+  brand    Brand?    @relation("BrandOnRelation", fields: [brandId], references: [id])
+  agent    Agent?    @relation("AgentOnRelation", fields: [agentId], references: [id])
+  team     Team?     @relation("TeamOnRelation", fields: [teamId], references: [id])
+  workflow Workflow? @relation("WorkflowOnRelation", fields: [workflowId], references: [id])
+  node     Node?     @relation("NodeOnRelation", fields: [nodeId], references: [id])
 
   type      String
   prompt    String?
@@ -331,16 +343,47 @@ model DocumentRelation {
 
 // 피드백/컨펌/수정 요청 일관성 기록 모델
 model AgentFeedback {
+  id                  String            @id @default(uuid())
+  workflowExecutionId String
+  nodeId              String
+  fromAgentId         String // 피드백 제공자(주로 팀장)
+  toAgentId           String // 피드백 받는 에이전트
+  feedbackType        String // 예: 'approve', 'request_change', 'comment'
+  content             String
+  createdAt           DateTime          @default(now())
+  workflowExecution   WorkflowExecution @relation(fields: [workflowExecutionId], references: [id])
+  node                Node              @relation("NodeToAgentFeedback", fields: [nodeId], references: [id])
+  fromAgent           Agent             @relation("FeedbackFromAgent", fields: [fromAgentId], references: [id])
+  toAgent             Agent             @relation("FeedbackToAgent", fields: [toAgentId], references: [id])
+}
+
+model AgentConfirm {
   id                  String   @id @default(uuid())
   workflowExecutionId String
   nodeId              String
-  fromAgentId         String   // 피드백 제공자(주로 팀장)
-  toAgentId           String   // 피드백 받는 에이전트
-  feedbackType        String   // 예: 'approve', 'request_change', 'comment'
-  content             String
+  agentId             String // 승인/거절한 에이전트
+  status              String // 'approved', 'rejected', 'pending' 등
+  reason              String? // 거절 사유 등
   createdAt           DateTime @default(now())
-  workflowExecution   WorkflowExecution @relation(fields: [workflowExecutionId], references: [id])
-  node                Node     @relation("NodeToAgentFeedback", fields: [nodeId], references: [id])
-  fromAgent           Agent    @relation("FeedbackFromAgent", fields: [fromAgentId], references: [id])
-  toAgent             Agent    @relation("FeedbackToAgent", fields: [toAgentId], references: [id])
+  updatedAt           DateTime @updatedAt
+
+  workflowExecution WorkflowExecution @relation(fields: [workflowExecutionId], references: [id])
+  node              Node              @relation(fields: [nodeId], references: [id])
+  agent             Agent             @relation(fields: [agentId], references: [id])
+}
+
+model NodeResult {
+  id                  String   @id @default(uuid())
+  workflowExecutionId String
+  nodeId              String
+  agentSessionId      String? // ← 추가
+  input               Json? // ← 추가
+  output              Json? // ← 추가
+  status              String? // 예: 'SUCCESS', 'FAILED'
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt // ← 추가
+
+  workflowExecution WorkflowExecution @relation(fields: [workflowExecutionId], references: [id])
+  node              Node              @relation(fields: [nodeId], references: [id])
+  agentSession      AgentSession?     @relation(fields: [agentSessionId], references: [id])
 }

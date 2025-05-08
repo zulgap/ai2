@@ -4,7 +4,7 @@ export class CreateConversationDto {
   title?: string;
   userId: string;
   agentId: string;
-  workflowExecutionId?: string;
+  workflowExecutionId: string;
   nodeId: string;
 }
 
@@ -14,5 +14,5 @@ export class CreateMessageDto {
   conversationId: string;
   nodeId?: string;
   agentId?: string;
-  workflowExecutionId?: string;
+  workflowExecutionId: string;
 }

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service'; // ← 경로 수정
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
-import { TeamLeaderType } from '@prisma/client'; // ← enum import 필요
+import { TeamLeaderType } from '@prisma/client';
 
 @Injectable()
 export class WorkflowService {
@@ -12,6 +12,13 @@ export class WorkflowService {
     return this.prisma.workflow.findMany({
       include: { nodes: true },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findOne(id: string) {
+    return this.prisma.workflow.findUnique({
+      where: { id },
+      include: { nodes: true },
     });
   }
 
@@ -25,16 +32,17 @@ export class WorkflowService {
         teamId: dto.teamId ?? null,
         teamLeaderType: dto.teamLeaderType as TeamLeaderType,
         leaderAgentId: dto.leaderAgentId ?? null,
-        ...(dto.userId ? { userId: dto.userId } : {}), // userId가 있을 때만 포함
+        ...(dto.userId ? { userId: dto.userId } : {}),
         nodes: dto.nodes
           ? {
               create: dto.nodes.map((n, idx) => ({
                 name: n.name,
                 type: n.type,
                 leaderAgentId: n.leaderAgentId ?? null,
-                position: {}, // 기본값 (빈 객체)
-                data: {},     // 기본값 (빈 객체)
-                order: idx,   // 순서 지정
+                workerAgentId: n.workerAgentId ?? null,
+                position: {},
+                data: {},
+                order: n.order ?? idx,
               })),
             }
           : undefined,
@@ -44,16 +52,7 @@ export class WorkflowService {
   }
 
   async update(id: string, dto: UpdateWorkflowDto) {
-    return this.prisma.workflow.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        description: dto.description,
-        isPublic: dto.isPublic,
-        // 노드 수정 등 추가 구현 필요시 여기에 작성
-      },
-      include: { nodes: true },
-    });
+    // ...생략 (노드 및 워크플로우 정보 수정만 담당)...
   }
 
   async remove(id: string) {

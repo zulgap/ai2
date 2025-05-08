@@ -10,20 +10,19 @@ export async function GET(req: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
     });
     if (!res.ok) {
-      console.error('[API][GET] 백엔드 응답 에러:', res.status, res.statusText);
       return NextResponse.json({ error: '백엔드 GET 요청 실패', status: res.status }, { status: res.status });
     }
     const data = await res.json();
     return NextResponse.json(Array.isArray(data) ? data : (data.workflows || data.data || []));
   } catch (err: any) {
-    console.error('[API][GET] 예외 발생:', err?.message || err);
     return NextResponse.json({ error: 'API GET 처리 중 예외 발생', detail: err?.message || err }, { status: 500 });
   }
 }
 
-// 워크플로우 생성
+// 워크플로우 생성 (노드 배열 포함)
 export async function POST(req: NextRequest) {
   const body = await req.json();
+  // body.nodes: [{ name, type, leaderAgentId, order }]
   try {
     const res = await fetch(`${BACKEND_BASE}/workflows`, {
       method: 'POST',
@@ -32,13 +31,11 @@ export async function POST(req: NextRequest) {
     });
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
-      console.error('[API][POST] 백엔드 응답 에러:', res.status, res.statusText, errorData);
       return NextResponse.json({ error: '백엔드 POST 요청 실패', detail: errorData, status: res.status }, { status: res.status });
     }
     const data = await res.json();
     return NextResponse.json(data);
   } catch (err: any) {
-    console.error('[API][POST] 예외 발생:', err?.message || err);
     return NextResponse.json({ error: 'API POST 처리 중 예외 발생', detail: err?.message || err }, { status: 500 });
   }
 }

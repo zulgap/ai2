@@ -1,15 +1,30 @@
 import { Module } from '@nestjs/common';
 import { WorkflowController } from './workflow.controller';
 import { WorkflowService } from './workflow.service';
-import { NodeController } from './node.controller';
-import { NodeService } from './node.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { ExecutionController } from './execution.controller';
 import { ExecutionService } from './execution.service';
+import { AgentSessionModule } from '../agent-session/agent-session.module';
+import { PrismaModule } from '../prisma/prisma.module';
+import { MessageController } from './message.controller';
+import { MessageService } from './message.service';
+import { FeedbackController } from './feedback.controller'; // 추가
+import { FeedbackService } from './feedback.service'; // 추가
 
 @Module({
-  controllers: [WorkflowController, NodeController, ExecutionController],
-  providers: [WorkflowService, NodeService, PrismaService, ExecutionService],
-  exports: [WorkflowService, NodeService],
+  imports: [
+    PrismaModule,
+    AgentSessionModule,
+  ],
+  controllers: [
+    WorkflowController, 
+    MessageController,
+    FeedbackController // 추가
+  ],
+  providers: [
+    WorkflowService, 
+    ExecutionService, 
+    MessageService,
+    FeedbackService // 추가
+  ],
+  exports: [WorkflowService, ExecutionService],
 })
 export class WorkflowModule {}

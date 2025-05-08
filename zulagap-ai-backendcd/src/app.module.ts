@@ -5,12 +5,9 @@ import { PrismaService } from './prisma/prisma.service';
 import { AgentModule } from './agent/agent.module';
 import { AgentSessionModule } from './agent-session/agent-session.module';
 import { ConversationModule } from './conversation/conversation.module';
-import { MessageModule } from './message/message.module';
 import { DocumentModule } from './document/document.module';
 import { WorkflowModule } from './workflow/workflow.module';
-import { NodeModule } from './node/node.module';
 import { UserModule } from './user/user.module';
-import { WorkflowExecutionModule } from './workflow-execution/workflow-execution.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { APP_GUARD } from '@nestjs/core';
@@ -28,12 +25,9 @@ import { VectorStoreService } from './document/vectorstore/vectorstore.service';
     AgentModule,
     AgentSessionModule,
     ConversationModule,
-    MessageModule,
     DocumentModule,
     WorkflowModule,
-    NodeModule,
     UserModule,
-    WorkflowExecutionModule,
     AuthModule,
 
     // GatewayModule, // 실시간 기능(WebSocket 등) 필요시

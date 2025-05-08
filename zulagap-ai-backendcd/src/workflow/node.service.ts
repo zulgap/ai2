@@ -63,4 +63,67 @@ export class NodeService {
       data: { data: flowData },
     });
   }
+
+  async create(data: {
+    workflowId: string;
+    name: string;
+    type: string;
+    leaderAgentId?: string;
+    order: number;
+    position?: any;
+    data?: any;
+  }) {
+    return this.prisma.node.create({
+      data: {
+        workflowId: data.workflowId,
+        name: data.name,
+        type: data.type,
+        leaderAgentId: data.leaderAgentId ?? null,
+        order: data.order,
+        position: data.position ?? {},
+        data: data.data ?? {},
+      },
+    });
+  }
+
+  async update(id: string, data: {
+    name?: string;
+    type?: string;
+    leaderAgentId?: string;
+    order?: number;
+    position?: any;
+    data?: any;
+  }) {
+    return this.prisma.node.update({
+      where: { id },
+      data: {
+        ...data,
+        leaderAgentId: data.leaderAgentId ?? undefined,
+        order: data.order ?? undefined,
+        position: data.position ?? undefined,
+        data: data.data ?? undefined,
+      },
+    });
+  }
+
+  async findByWorkflow(workflowId: string) {
+    return this.prisma.node.findMany({
+      where: { workflowId },
+      orderBy: { order: 'asc' },
+      include: { leaderAgent: true }, // 담당자 정보 포함
+    });
+  }
+
+  async findOne(id: string) {
+    return this.prisma.node.findUnique({
+      where: { id },
+      include: { leaderAgent: true },
+    });
+  }
+
+  async delete(nodeId: string) {
+    return this.prisma.node.delete({
+      where: { id: nodeId },
+    });
+  }
 }

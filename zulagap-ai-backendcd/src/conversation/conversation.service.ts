@@ -19,8 +19,8 @@ export class ConversationService {
         userId: dto.userId,
         agentId: dto.agentId,
         title: dto.title,
-        workflowExecutionId: dto.workflowExecutionId ?? null,
         nodeId: dto.nodeId,
+        workflowExecutionId: dto.workflowExecutionId, // 직접 할당 (조건부 처리 제거)
       }
     });
   }
@@ -41,7 +41,13 @@ export class ConversationService {
   }
 
   update(id: string, dto: UpdateConversationDto) {
-    return this.prisma.conversation.update({ where: { id }, data: dto });
+    return this.prisma.conversation.update({ 
+      where: { id }, 
+      data: {
+        ...dto,
+        ...(dto.workflowExecutionId ? { workflowExecutionId: dto.workflowExecutionId } : {}),
+      } 
+    });
   }
 
   remove(id: string) {

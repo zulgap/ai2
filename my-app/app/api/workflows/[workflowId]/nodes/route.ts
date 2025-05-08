@@ -1,50 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 
 const BACKEND_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000/api';
 
+// 워크플로우별 노드 목록 조회
 export async function GET(
   req: NextRequest,
   { params }: { params: { workflowId: string } }
 ) {
-  const { workflowId } = params;
-
-  // 워크플로우와 팀, 노드 정보 조회
-  const workflow = await prisma.workflow.findUnique({
-    where: { id: workflowId },
-    include: {
-      team: { include: { agents: true } },
-      nodes: true,
-    },
+  const res = await fetch(`${BACKEND_BASE}/nodes?workflowId=${params.workflowId}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
   });
-
-  if (!workflow) return NextResponse.json([], { status: 404 });
-
-  // 팀의 모든 에이전트
-  let agents = workflow.team?.agents || [];
-
-  // 노드별 리더 에이전트도 포함 (중복 제거)
-  const nodeAgentIds = (workflow.nodes as { leaderAgentId?: string | null }[])
-    .map(n => n.leaderAgentId)
-    .filter((id): id is string => Boolean(id));
-  const nodeAgents = nodeAgentIds.length
-    ? await prisma.agent.findMany({ where: { id: { in: nodeAgentIds } } })
-    : [];
-
-  // 중복 제거
-  const agentMap = new Map();
-  [...agents, ...nodeAgents].forEach(a => agentMap.set(a.id, a));
-  agents = Array.from(agentMap.values());
-
-  return NextResponse.json(agents);
+  const data = await res.json();
+  // 담당자/순서/타입 정보 포함 반환
+  return NextResponse.json(
+    Array.isArray(data)
+      ? data.map(n => ({
+          id: n.id,
+          name: n.name,
+          type: n.type,
+          leaderAgentId: n.leaderAgentId,
+          order: n.order,
+        }))
+      : [],
+    { status: res.status }
+  );
 }
 
-export async function POST(req: NextRequest, { params }: { params: { workflowId: string } }) {
+// 노드 생성 (담당자/순서/타입 포함)
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { workflowId: string } }
+) {
   const body = await req.json();
-  const res = await fetch(`${BACKEND_BASE}/workflows/${params.workflowId}/nodes`, {
+  // body: { name, type, leaderAgentId, order }
+  const res = await fetch(`${BACKEND_BASE}/nodes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, workflowId: params.workflowId }),
   });
   const data = await res.json();
   return NextResponse.json(data, { status: res.status });
